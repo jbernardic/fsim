@@ -17,14 +17,6 @@ async function main() {
   const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
   light.intensity = 0.7;
 
-  // sky
-  const skyMaterial = new SkyMaterial("skyMaterial", scene);
-  skyMaterial.backFaceCulling = false;
-  skyMaterial.inclination = 10;
-
-  const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 1000 }, scene);
-  skybox.material = skyMaterial;
-
   // player
   const playerAsset = await BABYLON.ImportMeshAsync("models/player.glb", scene);
   let playerModel: BABYLON.AbstractMesh;
@@ -34,10 +26,20 @@ async function main() {
     }
   }
 
+  // sky
+  const skyMaterial = new SkyMaterial("skyMaterial", scene);
+  skyMaterial.backFaceCulling = false;
+  skyMaterial.inclination = 10;
+
+  const skybox = BABYLON.MeshBuilder.CreateBox("skyBox", { size: 10000 }, scene);
+  skybox.material = skyMaterial;
+
   //terain
-  const terrain = BABYLON.MeshBuilder.CreatePlane("plane", { size: 1000 }, scene);
-  terrain.rotation.x = Math.PI / 2;
-  terrain.material = new GridMaterial("terrainMaterial", scene);
+  const terrain = BABYLON.MeshBuilder.CreateGround("terrain", { width: 10000, height: 10000 }, scene);
+  const terrainMaterial = new GridMaterial("terrainMaterial", scene);
+  terrainMaterial.mainColor = new BABYLON.Color3(0.05, 0.05, 0.1);
+  
+  terrain.material = terrainMaterial;
 
   let pitchControl = 0;
   let yawControl = 0;
@@ -102,6 +104,7 @@ async function main() {
     const forwardDirection = playerModel.forward;
     const deltaTime = scene.getEngine().getDeltaTime() / 1000.0; // convert ms to seconds
     const moveDistance = PLANE_SPEED * deltaTime;
+    const lastPlayerPos = playerModel.position.clone();
     playerModel.position.addInPlace(forwardDirection.scale(moveDistance));
 
     // camera calculation
@@ -114,6 +117,17 @@ async function main() {
     camera.position = BABYLON.Vector3.Lerp(camera.position, desiredCamPos, CAMERA_LERP_FACTOR);
     camera.setTarget(desiredTarget);
     camera.upVector = BABYLON.Vector3.Up();
+
+    //terrain and skybox moving with player on x,z axis
+    terrain.position.x = playerModel.position.x;
+    terrain.position.z = playerModel.position.z;
+    skybox.position = playerModel.position.clone();
+
+    const dx = playerModel.position.x-lastPlayerPos.x;
+    const dz = playerModel.position.z-lastPlayerPos.z;
+
+    //add grid offset to simulate ground moving
+    (terrain.material as GridMaterial).gridOffset.addInPlaceFromFloats(dx, 0, dz);
 
     scene.render();
   });
