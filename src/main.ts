@@ -3,11 +3,18 @@ import * as BABYLON from "@babylonjs/core"
 import "@babylonjs/loaders/glTF";
 import { GridMaterial, SkyMaterial } from "@babylonjs/materials";
 
-async function main() {
-  const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
-  const engine = new BABYLON.Engine(canvas, true);
-  const scene = new BABYLON.Scene(engine);
 
+interface InputState{
+  pitch: number, // -1 to 1
+  yaw: number
+}
+const input: InputState = { pitch: 0, yaw: 0 };
+
+const canvas = document.getElementById("renderCanvas") as HTMLCanvasElement;
+const engine = new BABYLON.Engine(canvas, true);
+const scene = new BABYLON.Scene(engine);
+
+async function main() {
   // camera
   const camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), scene);
   camera.setTarget(BABYLON.Vector3.Zero());
@@ -41,72 +48,18 @@ async function main() {
   
   terrain.material = terrainMaterial;
 
-  let pitchControl = 0;
-  let yawControl = 0;
   scene.onKeyboardObservable.add((info) => {
-    //PITCH
-    if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "w") {
-      pitchControl = 1;
-    }
-    else if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "s") {
-      pitchControl = -1;
-    }
-    else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "w" && pitchControl == 1) {
-      pitchControl = 0;
-    }
-    else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "s" && pitchControl == -1) {
-      pitchControl = 0;
-    }
-    //YAW
-    if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "a") {
-      yawControl = -1;
-    }
-    else if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "d") {
-      yawControl = 1;
-    }
-    else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "a" && yawControl == -1) {
-      yawControl = 0;
-    }
-    else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "d" && yawControl == 1) {
-      yawControl = 0;
-    }
+    handleKeyboardInput(info);
   });
 
   engine.runRenderLoop(function () {
-
-    const PITCH_SPEED = 0.02; // radians per control unit per frame? Adjust based on input
-    const YAW_SPEED = 0.02;
-    const ROLL_SPEED = 0.006;
-    const PLANE_SPEED = 50; // units per second
     const CAMERA_DISTANCE_BEHIND = 40;
     const CAMERA_DISTANCE_UP = 15;
     const CAMERA_TARGET_AHEAD = 50;
     const CAMERA_LERP_FACTOR = 0.3;
 
-    playerModel.rotate(BABYLON.Axis.X, pitchControl * PITCH_SPEED, BABYLON.Space.LOCAL);
-    playerModel.rotate(BABYLON.Axis.Y, yawControl * YAW_SPEED, BABYLON.Space.WORLD); // world space because I don't want roll to affect yaw
-
-    const rollAngle = playerModel.rotationQuaternion.toEulerAngles().z; // limiting roll angle to [-0.2, 0.2]
-    if (yawControl < 0 && rollAngle >= -0.2 || yawControl > 0 && rollAngle <= 0.2) {
-      playerModel.rotate(BABYLON.Axis.Z, yawControl * ROLL_SPEED, BABYLON.Space.LOCAL);
-    }
-
-    //if player isn't moving yaw, slerp roll to 0
-    if (yawControl == 0) {
-      const euler = playerModel.rotationQuaternion.toEulerAngles();
-      const targetQuat = BABYLON.Quaternion.RotationYawPitchRoll(
-        euler.y,
-        euler.x,
-        0
-      );
-      playerModel.rotationQuaternion = BABYLON.Quaternion.Slerp(playerModel.rotationQuaternion, targetQuat, 0.1);
-    }
-
-    const forwardDirection = playerModel.forward;
-    const deltaTime = scene.getEngine().getDeltaTime() / 1000.0; // convert ms to seconds
-    const moveDistance = PLANE_SPEED * deltaTime;
     const lastPlayerPos = playerModel.position.clone();
-    playerModel.position.addInPlace(forwardDirection.scale(moveDistance));
+    applyFlightInput(playerModel);
 
     // camera calculation
     const desiredCamPos = playerModel.position.clone();
@@ -136,6 +89,67 @@ async function main() {
   window.addEventListener("resize", function () {
     engine.resize();
   });
+}
+
+function handleKeyboardInput(info: BABYLON.KeyboardInfo){
+  //PITCH
+  if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "w") {
+    input.pitch = 1;
+  }
+  else if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "s") {
+    input.pitch = -1;
+  }
+  else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "w" && input.pitch == 1) {
+    input.pitch = 0;
+  }
+  else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "s" && input.pitch == -1) {
+    input.pitch = 0;
+  }
+  //YAW
+  if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "a") {
+    input.yaw = -1;
+  }
+  else if (info.type == BABYLON.KeyboardEventTypes.KEYDOWN && info.event.key == "d") {
+    input.yaw = 1;
+  }
+  else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "a" && input.yaw == -1) {
+    input.yaw = 0;
+  }
+  else if (info.type == BABYLON.KeyboardEventTypes.KEYUP && info.event.key == "d" && input.yaw == 1) {
+    input.yaw = 0;
+  }
+}
+
+function applyFlightInput(playerModel: BABYLON.AbstractMesh){
+  const PITCH_SPEED = 0.02; 
+  const YAW_SPEED = 0.02;
+  const ROLL_SPEED = 0.006;
+  const PLANE_SPEED = 50; // units per second
+
+  playerModel.rotate(BABYLON.Axis.X, input.pitch * PITCH_SPEED, BABYLON.Space.LOCAL);
+    playerModel.rotate(BABYLON.Axis.Y, input.yaw * YAW_SPEED, BABYLON.Space.WORLD); // world space because I don't want roll to affect yaw
+
+    const rollAngle = playerModel.rotationQuaternion.toEulerAngles().z; // limiting roll angle to [-0.2, 0.2]
+    if (input.yaw < 0 && rollAngle >= -0.2 || input.yaw > 0 && rollAngle <= 0.2) {
+      playerModel.rotate(BABYLON.Axis.Z, input.yaw * ROLL_SPEED, BABYLON.Space.LOCAL);
+    }
+
+    //if player isn't moving yaw, slerp roll to 0
+    if (input.yaw == 0) {
+      const euler = playerModel.rotationQuaternion.toEulerAngles();
+      const targetQuat = BABYLON.Quaternion.RotationYawPitchRoll(
+        euler.y,
+        euler.x,
+        0
+      );
+      playerModel.rotationQuaternion = BABYLON.Quaternion.Slerp(playerModel.rotationQuaternion, targetQuat, 0.1);
+    }
+
+    const forwardDirection = playerModel.forward;
+    const deltaTime = scene.getEngine().getDeltaTime() / 1000.0; // convert ms to seconds
+    const moveDistance = PLANE_SPEED * deltaTime;
+    playerModel.position.addInPlace(forwardDirection.scale(moveDistance));
+
 }
 
 main();
