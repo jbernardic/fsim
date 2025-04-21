@@ -76,6 +76,7 @@ async function main() {
 
     const PITCH_SPEED = 0.02; // radians per control unit per frame? Adjust based on input
     const YAW_SPEED = 0.02;
+    const ROLL_SPEED = 0.006;
     const PLANE_SPEED = 50; // units per second
     const CAMERA_DISTANCE_BEHIND = 40;
     const CAMERA_DISTANCE_UP = 15;
@@ -87,7 +88,7 @@ async function main() {
 
     const rollAngle = playerModel.rotationQuaternion.toEulerAngles().z; // limiting roll angle to [-0.2, 0.2]
     if (yawControl < 0 && rollAngle >= -0.2 || yawControl > 0 && rollAngle <= 0.2) {
-      playerModel.rotate(BABYLON.Axis.Z, yawControl * YAW_SPEED * 0.3, BABYLON.Space.LOCAL);
+      playerModel.rotate(BABYLON.Axis.Z, yawControl * ROLL_SPEED, BABYLON.Space.LOCAL);
     }
 
     //if player isn't moving yaw, slerp roll to 0
