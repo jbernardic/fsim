@@ -127,29 +127,28 @@ function applyFlightInput(playerModel: BABYLON.AbstractMesh){
   const PLANE_SPEED = 50; // units per second
 
   playerModel.rotate(BABYLON.Axis.X, input.pitch * PITCH_SPEED, BABYLON.Space.LOCAL);
-    playerModel.rotate(BABYLON.Axis.Y, input.yaw * YAW_SPEED, BABYLON.Space.WORLD); // world space because I don't want roll to affect yaw
+  playerModel.rotate(BABYLON.Axis.Y, input.yaw * YAW_SPEED, BABYLON.Space.WORLD); // world space because I don't want roll to affect yaw
 
-    const rollAngle = playerModel.rotationQuaternion.toEulerAngles().z; // limiting roll angle to [-0.2, 0.2]
-    if (input.yaw < 0 && rollAngle >= -0.2 || input.yaw > 0 && rollAngle <= 0.2) {
-      playerModel.rotate(BABYLON.Axis.Z, input.yaw * ROLL_SPEED, BABYLON.Space.LOCAL);
-    }
+  const rollAngle = playerModel.rotationQuaternion.toEulerAngles().z; // limiting roll angle to [-0.2, 0.2]
+  if (input.yaw < 0 && rollAngle >= -0.2 || input.yaw > 0 && rollAngle <= 0.2) {
+    playerModel.rotate(BABYLON.Axis.Z, input.yaw * ROLL_SPEED, BABYLON.Space.LOCAL);
+  }
 
-    //if player isn't moving yaw, slerp roll to 0
-    if (input.yaw == 0) {
-      const euler = playerModel.rotationQuaternion.toEulerAngles();
-      const targetQuat = BABYLON.Quaternion.RotationYawPitchRoll(
-        euler.y,
-        euler.x,
-        0
-      );
-      playerModel.rotationQuaternion = BABYLON.Quaternion.Slerp(playerModel.rotationQuaternion, targetQuat, 0.1);
-    }
+  //if player isn't moving yaw, slerp roll to 0
+  if (input.yaw == 0) {
+    const euler = playerModel.rotationQuaternion.toEulerAngles();
+    const targetQuat = BABYLON.Quaternion.RotationYawPitchRoll(
+      euler.y,
+      euler.x,
+      0
+    );
+    playerModel.rotationQuaternion = BABYLON.Quaternion.Slerp(playerModel.rotationQuaternion, targetQuat, 0.1);
+  }
 
-    const forwardDirection = playerModel.forward;
-    const deltaTime = scene.getEngine().getDeltaTime() / 1000.0; // convert ms to seconds
-    const moveDistance = PLANE_SPEED * deltaTime;
-    playerModel.position.addInPlace(forwardDirection.scale(moveDistance));
-
+  const forwardDirection = playerModel.forward;
+  const deltaTime = scene.getEngine().getDeltaTime() / 1000.0; // convert ms to seconds
+  const moveDistance = PLANE_SPEED * deltaTime;
+  playerModel.position.addInPlace(forwardDirection.scale(moveDistance));
 }
 
 main();
